@@ -14,7 +14,7 @@ namespace ACLIB
 
     Thread::~Thread()
     {
-        join();
+        stop();
         if(m_thread_handle)
         {
             CloseHandle(m_thread_handle);
@@ -36,8 +36,7 @@ namespace ACLIB
 
     void Thread::join()
     {
-        m_running = false;
-        WaitForSingleObject(m_thread_handle, INFINITE);
+        WaitForSingleObject(m_thread_handle, 1000); // Wait 1 second
     }
 
     void Thread::run()
@@ -51,6 +50,7 @@ namespace ACLIB
     bool Thread::stop()
     {
         m_running = false;
+        join();
         return false;
     }
 

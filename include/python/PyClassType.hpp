@@ -20,6 +20,12 @@ namespace ACLIB
         std::vector<PyMethodDef> m_methods;
         std::vector<PyGetSetDef> m_getset;
 
+        explicit PyClassType(const char* name)
+            : m_class_name(name)
+            , m_type()
+        {
+        }
+
     public:
         static PyObject* _new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         {
@@ -32,19 +38,9 @@ namespace ACLIB
             return reinterpret_cast<PyObject*>(self);
         }
 
-        static void _del(PyTypeObject* self)
+        static void _del(PyTypeObject* type)
         {
-            self->tp_free(self);
-        }
-        static int _init(PyClassType* self, PyObject* args, PyObject* kwds)
-        {
-            return 0;
-        }
-
-        explicit PyClassType(const char* name)
-            : m_class_name(name)
-            , m_type()
-        {
+            Py_TYPE(type)->tp_free(reinterpret_cast<PyObject*>(type));
         }
 
         virtual bool init(PyObject* module)
@@ -60,14 +56,20 @@ namespace ACLIB
             PyVarObject ob_base = ACLIBPyObject_HEAD_INIT(&PyType_Type);
             m_type.ob_base      = ob_base;
             m_type.tp_name      = m_class_name;
-            m_type.tp_basicsize = sizeof(PyClassType);
-            m_type.tp_flags     = Py_TPFLAGS_DEFAULT;
-            m_type.tp_new       = (newfunc)_new;
-            m_type.tp_dealloc   = (destructor)_del;
-            m_type.tp_init      = (initproc)_init;
             m_type.tp_methods   = m_methods.data();
             m_type.tp_members   = m_members.data();
             m_type.tp_getset    = m_getset.data();
+
+            // Set defaults if nothing was set yet
+            if(!m_type.tp_flags)
+                m_type.tp_flags = Py_TPFLAGS_DEFAULT;
+            if(!m_type.tp_new)
+                m_type.tp_new = (newfunc)PyClassType::_new;
+            if(!m_type.tp_dealloc)
+                m_type.tp_dealloc = (destructor)PyClassType::_del;
+
+            if(!m_type.tp_basicsize)
+                INFO("Set basic size of your class type.");
 
             if(module == nullptr)
             {
